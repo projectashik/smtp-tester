@@ -197,6 +197,7 @@ export default function TestResults({
           {result && (
             <div className="flex items-center space-x-2">
               <button
+                type="button"
                 onClick={() => setShowDetails(!showDetails)}
                 className="flex items-center space-x-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -208,6 +209,7 @@ export default function TestResults({
                 <span>{showDetails ? "Hide" : "Show"} Details</span>
               </button>
               <button
+                type="button"
                 onClick={downloadResults}
                 className="flex items-center space-x-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -441,6 +443,7 @@ export default function TestResults({
               Test Logs ({result.logs.length})
             </h4>
             <button
+              type="button"
               onClick={() => setShowLogs(!showLogs)}
               className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
@@ -480,12 +483,13 @@ export default function TestResults({
                           )}
                         </div>
                         <p className="text-xs text-gray-500">
-                          {log.timestamp.toLocaleTimeString()}
+                          {new Date(log.timestamp).toLocaleTimeString()}
                         </p>
 
                         {log.details && Object.keys(log.details).length > 0 && (
                           <div className="mt-2">
                             <button
+                              type="button"
                               onClick={() => toggleLogExpansion(log.id)}
                               className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
                             >
@@ -504,6 +508,7 @@ export default function TestResults({
                                     Log Details
                                   </span>
                                   <button
+                                    type="button"
                                     onClick={() =>
                                       copyToClipboard(
                                         JSON.stringify(log.details, null, 2)

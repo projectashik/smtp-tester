@@ -1,6 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+// import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
   CheckCircle,
@@ -15,12 +15,12 @@ import {
   Shield,
   User,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useRealtimeSMTPTest } from "@/hooks/useRealtimeSMTPTest";
 import {
-  type FormState,
+  type LogEntry,
   type SMTPConfig,
-  SMTPConfigSchema,
   type SMTPProvider,
   SMTPProviders,
   type TestResult,
@@ -30,12 +30,30 @@ import {
 interface SMTPFormProps {
   onTestResult: (result: TestResult) => void;
   onStatusChange: (status: TestStatus) => void;
+  onLogsUpdate: (logs: LogEntry[]) => void;
+}
+
+interface FormState {
+  isSubmitting: boolean;
+  currentStatus: TestStatus;
+  lastResult?: TestResult;
 }
 
 export default function SMTPForm({
   onTestResult,
   onStatusChange,
+  onLogsUpdate,
 }: SMTPFormProps) {
+  const {
+    isLoading,
+    logs,
+    currentStatus,
+    testResult,
+    startTest,
+    stopTest,
+    clearLogs,
+  } = useRealtimeSMTPTest();
+
   const [formState, setFormState] = useState<FormState>({
     isSubmitting: false,
     currentStatus: TestStatus.IDLE,
@@ -45,6 +63,27 @@ export default function SMTPForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Update parent components when real-time data changes
+  useEffect(() => {
+    onStatusChange(currentStatus);
+    setFormState((prev) => ({
+      ...prev,
+      currentStatus,
+      isSubmitting: isLoading,
+    }));
+  }, [currentStatus, isLoading, onStatusChange]);
+
+  useEffect(() => {
+    if (testResult) {
+      onTestResult(testResult);
+      setFormState((prev) => ({ ...prev, lastResult: testResult }));
+    }
+  }, [testResult, onTestResult]);
+
+  useEffect(() => {
+    onLogsUpdate(logs);
+  }, [logs, onLogsUpdate]);
+
   const {
     register,
     handleSubmit,
@@ -53,7 +92,7 @@ export default function SMTPForm({
     watch,
     reset,
   } = useForm<SMTPConfig>({
-    resolver: zodResolver(SMTPConfigSchema),
+    // resolver: zodResolver(SMTPConfigSchema),
     defaultValues: {
       host: "",
       port: 587,
@@ -84,52 +123,9 @@ export default function SMTPForm({
   };
 
   const onSubmit = async (data: SMTPConfig) => {
-    setFormState((prev) => ({
-      ...prev,
-      isSubmitting: true,
-      currentStatus: TestStatus.CONNECTING,
-    }));
-    onStatusChange(TestStatus.CONNECTING);
-
-    try {
-      const response = await fetch("/api/smtp-test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.result) {
-        setFormState((prev) => ({
-          ...prev,
-          lastResult: result.result,
-          currentStatus: result.result.status,
-        }));
-        onTestResult(result.result);
-        onStatusChange(result.result.status);
-      } else {
-        setFormState((prev) => ({
-          ...prev,
-          currentStatus: TestStatus.ERROR,
-        }));
-        onStatusChange(TestStatus.ERROR);
-        if (result.result) {
-          onTestResult(result.result);
-        }
-      }
-    } catch (error) {
-      console.error("SMTP test failed:", error);
-      setFormState((prev) => ({
-        ...prev,
-        currentStatus: TestStatus.ERROR,
-      }));
-      onStatusChange(TestStatus.ERROR);
-    } finally {
-      setFormState((prev) => ({ ...prev, isSubmitting: false }));
-    }
+    // Clear previous logs and start the real-time test
+    clearLogs();
+    startTest(data);
   };
 
   const getStatusIcon = () => {
@@ -194,10 +190,13 @@ export default function SMTPForm({
       <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
         {/* Provider Selection */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
+          <span
+            id="provider-label"
+            className="block text-sm font-medium text-gray-700"
+          >
             <Settings className="inline h-4 w-4 mr-2" />
             SMTP Provider
-          </label>
+          </span>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(SMTPProviders).map(([key, provider]) => (
               <button
@@ -219,15 +218,19 @@ export default function SMTPForm({
         {/* Server Configuration */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="host"
+              className="block text-sm font-medium text-gray-700"
+            >
               <Server className="inline h-4 w-4 mr-2" />
               SMTP Host *
             </label>
             <input
               {...register("host")}
               type="text"
+              id="host"
               placeholder="smtp.example.com"
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white ${
                 errors.host ? "border-red-500" : "border-gray-300"
               }`}
             />
@@ -240,15 +243,19 @@ export default function SMTPForm({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="port"
+              className="block text-sm font-medium text-gray-700"
+            >
               Port *
             </label>
             <input
               {...register("port", { valueAsNumber: true })}
               type="number"
+              id="port"
               min="1"
               max="65535"
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white ${
                 errors.port ? "border-red-500" : "border-gray-300"
               }`}
             />
@@ -264,13 +271,17 @@ export default function SMTPForm({
         {/* Security & Authentication */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="security"
+              className="block text-sm font-medium text-gray-700"
+            >
               <Shield className="inline h-4 w-4 mr-2" />
               Security
             </label>
             <select
               {...register("security")}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              id="security"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
             >
               <option value="none">None</option>
               <option value="starttls">STARTTLS</option>
@@ -301,20 +312,27 @@ export default function SMTPForm({
         {watch("requireAuth") && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700"
+              >
                 <User className="inline h-4 w-4 mr-2" />
                 Username
               </label>
               <input
                 {...register("username")}
                 type="text"
+                id="username"
                 placeholder="your-username"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 <Lock className="inline h-4 w-4 mr-2" />
                 Password
               </label>
@@ -322,8 +340,9 @@ export default function SMTPForm({
                 <input
                   {...register("password")}
                   type={showPassword ? "text" : "password"}
+                  id="password"
                   placeholder="your-password"
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 />
                 <button
                   type="button"
@@ -350,14 +369,18 @@ export default function SMTPForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="fromEmail"
+                className="block text-sm font-medium text-gray-700"
+              >
                 From Email *
               </label>
               <input
                 {...register("fromEmail")}
                 type="email"
+                id="fromEmail"
                 placeholder="sender@example.com"
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white ${
                   errors.fromEmail ? "border-red-500" : "border-gray-300"
                 }`}
               />
@@ -370,28 +393,36 @@ export default function SMTPForm({
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="fromName"
+                className="block text-sm font-medium text-gray-700"
+              >
                 From Name
               </label>
               <input
                 {...register("fromName")}
                 type="text"
+                id="fromName"
                 placeholder="Sender Name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="toEmail"
+                className="block text-sm font-medium text-gray-700"
+              >
                 To Email *
               </label>
               <input
                 {...register("toEmail")}
                 type="email"
+                id="toEmail"
                 placeholder="recipient@example.com"
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white ${
                   errors.toEmail ? "border-red-500" : "border-gray-300"
                 }`}
               />
@@ -404,27 +435,35 @@ export default function SMTPForm({
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="toName"
+                className="block text-sm font-medium text-gray-700"
+              >
                 To Name
               </label>
               <input
                 {...register("toName")}
                 type="text"
+                id="toName"
                 placeholder="Recipient Name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="subject"
+              className="block text-sm font-medium text-gray-700"
+            >
               Subject *
             </label>
             <input
               {...register("subject")}
               type="text"
+              id="subject"
               placeholder="Test Email Subject"
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white ${
                 errors.subject ? "border-red-500" : "border-gray-300"
               }`}
             />
@@ -438,7 +477,10 @@ export default function SMTPForm({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="message"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Message *
               </label>
               <div className="flex items-center space-x-2">
@@ -456,8 +498,9 @@ export default function SMTPForm({
             <textarea
               {...register("message")}
               rows={4}
+              id="message"
               placeholder="Enter your test message here..."
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-vertical ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-vertical text-gray-900 bg-white ${
                 errors.message ? "border-red-500" : "border-gray-300"
               }`}
             />
@@ -491,16 +534,20 @@ export default function SMTPForm({
           {showAdvanced && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="timeout"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Timeout (ms)
                 </label>
                 <input
                   {...register("timeout", { valueAsNumber: true })}
                   type="number"
+                  id="timeout"
                   min="1000"
                   max="60000"
                   step="1000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 />
               </div>
 
@@ -547,6 +594,8 @@ export default function SMTPForm({
           <button
             type="button"
             onClick={() => {
+              stopTest();
+              clearLogs();
               reset();
               setSelectedProvider("CUSTOM");
               setFormState({

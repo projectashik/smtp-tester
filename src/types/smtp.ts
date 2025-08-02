@@ -10,24 +10,21 @@ export const SecurityType = {
 
 export type SecurityType = (typeof SecurityType)[keyof typeof SecurityType];
 
-// SMTP Configuration Schema using Zod 4 patterns
+// SMTP Configuration Schema using Zod 3.x patterns
 export const SMTPConfigSchema = z.object({
-  host: z.string().min(1, { error: "Host is required" }),
-  port: z
-    .int32()
-    .min(1)
-    .max(65535, { error: "Port must be between 1 and 65535" }),
+  host: z.string().min(1, "Host is required"),
+  port: z.number().int().min(1).max(65535, "Port must be between 1 and 65535"),
   security: z.enum(["none", "tls", "ssl", "starttls"]),
   username: z.string().optional(),
   password: z.string().optional(),
-  fromEmail: z.email({ error: "Invalid from email address" }),
+  fromEmail: z.string().email("Invalid from email address"),
   fromName: z.string().optional(),
-  toEmail: z.email({ error: "Invalid to email address" }),
+  toEmail: z.string().email("Invalid to email address"),
   toName: z.string().optional(),
-  subject: z.string().min(1, { error: "Subject is required" }),
-  message: z.string().min(1, { error: "Message is required" }),
+  subject: z.string().min(1, "Subject is required"),
+  message: z.string().min(1, "Message is required"),
   isHtml: z.boolean().default(false),
-  timeout: z.int32().min(1000).max(60000).default(30000),
+  timeout: z.number().int().min(1000).max(60000).default(30000),
   requireAuth: z.boolean().default(false),
   rejectUnauthorized: z.boolean().default(true),
 });
