@@ -75,10 +75,24 @@ export default function SMTPForm({
 
   useEffect(() => {
     if (testResult) {
+      // Dispatch analytics event for test completion
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("smtp-test-completed", {
+            detail: {
+              provider: selectedProvider,
+              success: testResult.success,
+              duration: testResult.totalDuration,
+              timestamp: new Date().toISOString(),
+            },
+          })
+        );
+      }
+
       onTestResult(testResult);
       setFormState((prev) => ({ ...prev, lastResult: testResult }));
     }
-  }, [testResult, onTestResult]);
+  }, [testResult, onTestResult, selectedProvider]);
 
   useEffect(() => {
     onLogsUpdate(logs);
@@ -123,6 +137,18 @@ export default function SMTPForm({
   };
 
   const onSubmit = async (data: SMTPConfig) => {
+    // Dispatch analytics event for test start
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("smtp-test-started", {
+          detail: {
+            provider: selectedProvider,
+            timestamp: new Date().toISOString(),
+          },
+        })
+      );
+    }
+
     // Clear previous logs and start the real-time test
     clearLogs();
     startTest(data);
@@ -171,10 +197,11 @@ export default function SMTPForm({
             </div>
             <div>
               <h2 className="text-xl font-semibold text-white">
-                SMTP Configuration
+                SMTP Server Configuration
               </h2>
               <p className="text-blue-100 text-sm">
-                Configure and test your SMTP server settings
+                Configure your email server settings and test SMTP connectivity
+                in real-time
               </p>
             </div>
           </div>
@@ -195,8 +222,12 @@ export default function SMTPForm({
             className="block text-sm font-medium text-gray-700"
           >
             <Settings className="inline h-4 w-4 mr-2" />
-            SMTP Provider
+            Email Provider Presets
           </span>
+          <p className="text-xs text-gray-500 mb-2">
+            Select your email provider for automatic configuration, or choose
+            "Custom SMTP" for manual setup
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(SMTPProviders).map(([key, provider]) => (
               <button
@@ -586,7 +617,7 @@ export default function SMTPForm({
             ) : (
               <>
                 <Send className="h-5 w-5" />
-                <span>Test SMTP Connection</span>
+                <span>Start SMTP Test</span>
               </>
             )}
           </button>
