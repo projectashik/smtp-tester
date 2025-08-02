@@ -18,7 +18,6 @@ import {
   Shield,
   User,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { type LogLevel, type TestResult, TestStatus } from "@/types/smtp";
@@ -46,8 +45,8 @@ export default function TestResults({
           Ready to Test
         </h3>
         <p className="text-gray-600">
-          Configure your SMTP settings and click "Test SMTP Connection" to
-          begin.
+          Configure your SMTP settings and click &quot;Test SMTP
+          Connection&quot; to begin.
         </p>
       </div>
     );

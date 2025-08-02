@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       const encoder = new TextEncoder();
 
       // Helper function to send data to the stream
-      const sendEvent = (type: string, data: any) => {
+      const sendEvent = (type: string, data: { [key: string]: unknown }) => {
         const message = `data: ${JSON.stringify({ type, ...data })}\n\n`;
         controller.enqueue(encoder.encode(message));
       };
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         logs.push(logEntry);
 
         // Stream the log entry immediately
-        sendEvent("log", logEntry);
+        sendEvent("log", logEntry as unknown as { [key: string]: unknown });
       };
 
       // Helper function to send status updates
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         status: TestStatus,
         result?: Partial<TestResult>
       ) => {
-        sendEvent("status", { status, result });
+        sendEvent("status", { status, result } as { [key: string]: unknown });
       };
 
       // Start the SMTP test process
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           updateStatus(TestStatus.CONNECTING, result);
 
           // Create transporter
-          const transporterConfig: any = {
+          const transporterConfig: Record<string, unknown> = {
             host: config.host,
             port: config.port,
             secure: config.security === "ssl" || config.security === "tls",
@@ -177,7 +177,9 @@ export async function POST(request: NextRequest) {
             result.logs = logs;
 
             updateStatus(TestStatus.ERROR, result);
-            sendEvent("complete", { success: false, result });
+            sendEvent("complete", { success: false, result } as {
+              [key: string]: unknown;
+            });
             controller.close();
             return;
           }
@@ -236,7 +238,9 @@ export async function POST(request: NextRequest) {
               result.logs = logs;
 
               updateStatus(TestStatus.ERROR, result);
-              sendEvent("complete", { success: false, result });
+              sendEvent("complete", { success: false, result } as {
+                [key: string]: unknown;
+              });
               controller.close();
               return;
             }
@@ -341,7 +345,9 @@ export async function POST(request: NextRequest) {
           );
 
           updateStatus(result.status, result);
-          sendEvent("complete", { success: result.success, result });
+          sendEvent("complete", { success: result.success, result } as {
+            [key: string]: unknown;
+          });
           controller.close();
         } catch (error: unknown) {
           const totalDuration = Date.now() - startTime;
@@ -379,7 +385,9 @@ export async function POST(request: NextRequest) {
           };
 
           updateStatus(TestStatus.ERROR, errorResult);
-          sendEvent("complete", { success: false, result: errorResult });
+          sendEvent("complete", { success: false, result: errorResult } as {
+            [key: string]: unknown;
+          });
           controller.close();
         }
       })();
