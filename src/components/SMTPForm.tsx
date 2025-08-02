@@ -1,43 +1,47 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { 
-  SMTPConfig, 
-  SMTPConfigSchema, 
-  SMTPProviders, 
-  SMTPProvider,
-  TestResult,
-  TestStatus,
-  FormState
-} from '@/types/smtp';
-import { 
-  Mail, 
-  Server, 
-  Shield, 
-  User, 
-  Lock, 
-  Send, 
-  AlertCircle, 
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  AlertCircle,
   CheckCircle,
-  Loader2,
-  Settings,
   Eye,
-  EyeOff
-} from 'lucide-react';
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  Send,
+  Server,
+  Settings,
+  Shield,
+  User,
+} from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import {
+  type FormState,
+  type SMTPConfig,
+  SMTPConfigSchema,
+  type SMTPProvider,
+  SMTPProviders,
+  type TestResult,
+  TestStatus,
+} from "@/types/smtp";
 
 interface SMTPFormProps {
   onTestResult: (result: TestResult) => void;
   onStatusChange: (status: TestStatus) => void;
 }
 
-export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps) {
+export default function SMTPForm({
+  onTestResult,
+  onStatusChange,
+}: SMTPFormProps) {
   const [formState, setFormState] = useState<FormState>({
     isSubmitting: false,
-    currentStatus: TestStatus.IDLE
+    currentStatus: TestStatus.IDLE,
   });
-  const [selectedProvider, setSelectedProvider] = useState<SMTPProvider>('CUSTOM');
+  const [selectedProvider, setSelectedProvider] =
+    useState<SMTPProvider>("CUSTOM");
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -47,65 +51,69 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
     formState: { errors },
     setValue,
     watch,
-    reset
+    reset,
   } = useForm<SMTPConfig>({
     resolver: zodResolver(SMTPConfigSchema),
     defaultValues: {
-      host: '',
+      host: "",
       port: 587,
-      security: 'starttls',
-      username: '',
-      password: '',
-      fromEmail: '',
-      fromName: '',
-      toEmail: '',
-      toName: '',
-      subject: 'SMTP Test Email',
-      message: 'This is a test email sent from the SMTP Tester application.',
+      security: "starttls",
+      username: "",
+      password: "",
+      fromEmail: "",
+      fromName: "",
+      toEmail: "",
+      toName: "",
+      subject: "SMTP Test Email",
+      message: "This is a test email sent from the SMTP Tester application.",
       isHtml: false,
       timeout: 30000,
       requireAuth: false,
-      rejectUnauthorized: true
-    }
+      rejectUnauthorized: true,
+    },
   });
 
   const handleProviderChange = (provider: SMTPProvider) => {
     setSelectedProvider(provider);
     const providerConfig = SMTPProviders[provider];
-    
-    setValue('host', providerConfig.host);
-    setValue('port', providerConfig.port);
-    setValue('security', providerConfig.security);
-    setValue('requireAuth', providerConfig.requireAuth);
+
+    setValue("host", providerConfig.host);
+    setValue("port", providerConfig.port);
+    setValue("security", providerConfig.security);
+    setValue("requireAuth", providerConfig.requireAuth);
   };
 
   const onSubmit = async (data: SMTPConfig) => {
-    setFormState(prev => ({ ...prev, isSubmitting: true, currentStatus: TestStatus.CONNECTING }));
+    setFormState((prev) => ({
+      ...prev,
+      isSubmitting: true,
+      currentStatus: TestStatus.CONNECTING,
+    }));
     onStatusChange(TestStatus.CONNECTING);
 
     try {
-      const response = await fetch('/api/smtp-test', {
-        method: 'POST',
+      const response = await fetch("/api/smtp-test", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
 
       const result = await response.json();
-      
+
       if (result.success && result.result) {
-        setFormState(prev => ({ 
-          ...prev, 
+        setFormState((prev) => ({
+          ...prev,
           lastResult: result.result,
-          currentStatus: result.result.status 
+          currentStatus: result.result.status,
         }));
         onTestResult(result.result);
         onStatusChange(result.result.status);
       } else {
-        setFormState(prev => ({ 
-          ...prev, 
-          currentStatus: TestStatus.ERROR 
+        setFormState((prev) => ({
+          ...prev,
+          currentStatus: TestStatus.ERROR,
         }));
         onStatusChange(TestStatus.ERROR);
         if (result.result) {
@@ -113,14 +121,14 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
         }
       }
     } catch (error) {
-      console.error('SMTP test failed:', error);
-      setFormState(prev => ({ 
-        ...prev, 
-        currentStatus: TestStatus.ERROR 
+      console.error("SMTP test failed:", error);
+      setFormState((prev) => ({
+        ...prev,
+        currentStatus: TestStatus.ERROR,
       }));
       onStatusChange(TestStatus.ERROR);
     } finally {
-      setFormState(prev => ({ ...prev, isSubmitting: false }));
+      setFormState((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
 
@@ -142,17 +150,17 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
   const getStatusText = () => {
     switch (formState.currentStatus) {
       case TestStatus.CONNECTING:
-        return 'Connecting to SMTP server...';
+        return "Connecting to SMTP server...";
       case TestStatus.AUTHENTICATING:
-        return 'Authenticating...';
+        return "Authenticating...";
       case TestStatus.SENDING:
-        return 'Sending test email...';
+        return "Sending test email...";
       case TestStatus.SUCCESS:
-        return 'Test completed successfully!';
+        return "Test completed successfully!";
       case TestStatus.ERROR:
-        return 'Test failed';
+        return "Test failed";
       default:
-        return 'Ready to test';
+        return "Ready to test";
     }
   };
 
@@ -166,13 +174,19 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
               <Server className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">SMTP Configuration</h2>
-              <p className="text-blue-100 text-sm">Configure and test your SMTP server settings</p>
+              <h2 className="text-xl font-semibold text-white">
+                SMTP Configuration
+              </h2>
+              <p className="text-blue-100 text-sm">
+                Configure and test your SMTP server settings
+              </p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon()}
-            <span className="text-white text-sm font-medium">{getStatusText()}</span>
+            <span className="text-white text-sm font-medium">
+              {getStatusText()}
+            </span>
           </div>
         </div>
       </div>
@@ -192,8 +206,8 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
                 onClick={() => handleProviderChange(key as SMTPProvider)}
                 className={`p-3 text-sm font-medium rounded-lg border transition-all duration-200 ${
                   selectedProvider === key
-                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    ? "bg-blue-50 border-blue-500 text-blue-700"
+                    : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 {provider.name}
@@ -210,11 +224,11 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
               SMTP Host *
             </label>
             <input
-              {...register('host')}
+              {...register("host")}
               type="text"
               placeholder="smtp.example.com"
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.host ? 'border-red-500' : 'border-gray-300'
+                errors.host ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.host && (
@@ -226,14 +240,16 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Port *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Port *
+            </label>
             <input
-              {...register('port', { valueAsNumber: true })}
+              {...register("port", { valueAsNumber: true })}
               type="number"
               min="1"
               max="65535"
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.port ? 'border-red-500' : 'border-gray-300'
+                errors.port ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.port && (
@@ -253,7 +269,7 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
               Security
             </label>
             <select
-              {...register('security')}
+              {...register("security")}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             >
               <option value="none">None</option>
@@ -266,12 +282,15 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <input
-                {...register('requireAuth')}
+                {...register("requireAuth")}
                 type="checkbox"
                 id="requireAuth"
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label htmlFor="requireAuth" className="text-sm font-medium text-gray-700">
+              <label
+                htmlFor="requireAuth"
+                className="text-sm font-medium text-gray-700"
+              >
                 Require Authentication
               </label>
             </div>
@@ -279,7 +298,7 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
         </div>
 
         {/* Authentication Fields */}
-        {watch('requireAuth') && (
+        {watch("requireAuth") && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
@@ -287,7 +306,7 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
                 Username
               </label>
               <input
-                {...register('username')}
+                {...register("username")}
                 type="text"
                 placeholder="your-username"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -301,8 +320,8 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
               </label>
               <div className="relative">
                 <input
-                  {...register('password')}
-                  type={showPassword ? 'text' : 'password'}
+                  {...register("password")}
+                  type={showPassword ? "text" : "password"}
                   placeholder="your-password"
                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
@@ -328,16 +347,18 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
             <Mail className="h-5 w-5 mr-2" />
             Email Configuration
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">From Email *</label>
+              <label className="block text-sm font-medium text-gray-700">
+                From Email *
+              </label>
               <input
-                {...register('fromEmail')}
+                {...register("fromEmail")}
                 type="email"
                 placeholder="sender@example.com"
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                  errors.fromEmail ? 'border-red-500' : 'border-gray-300'
+                  errors.fromEmail ? "border-red-500" : "border-gray-300"
                 }`}
               />
               {errors.fromEmail && (
@@ -349,9 +370,11 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">From Name</label>
+              <label className="block text-sm font-medium text-gray-700">
+                From Name
+              </label>
               <input
-                {...register('fromName')}
+                {...register("fromName")}
                 type="text"
                 placeholder="Sender Name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -361,13 +384,15 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">To Email *</label>
+              <label className="block text-sm font-medium text-gray-700">
+                To Email *
+              </label>
               <input
-                {...register('toEmail')}
+                {...register("toEmail")}
                 type="email"
                 placeholder="recipient@example.com"
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                  errors.toEmail ? 'border-red-500' : 'border-gray-300'
+                  errors.toEmail ? "border-red-500" : "border-gray-300"
                 }`}
               />
               {errors.toEmail && (
@@ -379,9 +404,11 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">To Name</label>
+              <label className="block text-sm font-medium text-gray-700">
+                To Name
+              </label>
               <input
-                {...register('toName')}
+                {...register("toName")}
                 type="text"
                 placeholder="Recipient Name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -390,13 +417,15 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Subject *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Subject *
+            </label>
             <input
-              {...register('subject')}
+              {...register("subject")}
               type="text"
               placeholder="Test Email Subject"
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.subject ? 'border-red-500' : 'border-gray-300'
+                errors.subject ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.subject && (
@@ -409,23 +438,27 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">Message *</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Message *
+              </label>
               <div className="flex items-center space-x-2">
                 <input
-                  {...register('isHtml')}
+                  {...register("isHtml")}
                   type="checkbox"
                   id="isHtml"
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="isHtml" className="text-sm text-gray-600">HTML Format</label>
+                <label htmlFor="isHtml" className="text-sm text-gray-600">
+                  HTML Format
+                </label>
               </div>
             </div>
             <textarea
-              {...register('message')}
+              {...register("message")}
               rows={4}
               placeholder="Enter your test message here..."
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-vertical ${
-                errors.message ? 'border-red-500' : 'border-gray-300'
+                errors.message ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.message && (
@@ -446,7 +479,11 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
           >
             <Settings className="h-4 w-4" />
             <span>Advanced Settings</span>
-            <span className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>
+            <span
+              className={`transform transition-transform ${
+                showAdvanced ? "rotate-180" : ""
+              }`}
+            >
               ▼
             </span>
           </button>
@@ -454,9 +491,11 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
           {showAdvanced && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Timeout (ms)</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Timeout (ms)
+                </label>
                 <input
-                  {...register('timeout', { valueAsNumber: true })}
+                  {...register("timeout", { valueAsNumber: true })}
                   type="number"
                   min="1000"
                   max="60000"
@@ -468,12 +507,15 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <input
-                    {...register('rejectUnauthorized')}
+                    {...register("rejectUnauthorized")}
                     type="checkbox"
                     id="rejectUnauthorized"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <label htmlFor="rejectUnauthorized" className="text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="rejectUnauthorized"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Reject Unauthorized Certificates
                   </label>
                 </div>
@@ -506,10 +548,10 @@ export default function SMTPForm({ onTestResult, onStatusChange }: SMTPFormProps
             type="button"
             onClick={() => {
               reset();
-              setSelectedProvider('CUSTOM');
+              setSelectedProvider("CUSTOM");
               setFormState({
                 isSubmitting: false,
-                currentStatus: TestStatus.IDLE
+                currentStatus: TestStatus.IDLE,
               });
               onStatusChange(TestStatus.IDLE);
             }}
