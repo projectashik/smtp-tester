@@ -1,68 +1,39 @@
 "use client";
 
-import { Activity, Mail, TrendingUp, Users } from "lucide-react";
-import { useEffect, useState } from "react";
-
-interface Stats {
-  totalTests: number;
-  totalPageViews: number;
-  successRate: number;
-  activeUsers: number;
-}
+import {
+  Activity,
+  AlertCircle,
+  Mail,
+  RefreshCw,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import { useRealTimeStats } from "@/hooks/useRealTimeStats";
 
 export default function StatsDisplay() {
-  const [stats, setStats] = useState<Stats>({
-    totalTests: 0,
-    totalPageViews: 0,
-    successRate: 0,
-    activeUsers: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const { stats, loading, error, refetch } = useRealTimeStats();
 
-  useEffect(() => {
-    // Simulate fetching stats from PostHog or your analytics API
-    const fetchStats = async () => {
-      try {
-        // In a real implementation, you would fetch from PostHog API
-        // For now, we'll use simulated data that increments
-        const baseStats = {
-          totalTests: 15420,
-          totalPageViews: 45680,
-          successRate: 94.2,
-          activeUsers: 1250,
-        };
+  const simulateTest = () => {
+    // Simulate an SMTP test for demo purposes
+    window.dispatchEvent(new CustomEvent("smtp-test-completed"));
 
-        // Add some randomness to make it feel live
-        const randomIncrement = () => Math.floor(Math.random() * 10);
+    // 85% chance of success (realistic for SMTP testing)
+    if (Math.random() > 0.15) {
+      window.dispatchEvent(new CustomEvent("smtp-test-success"));
+    }
+  };
 
-        setStats({
-          totalTests: baseStats.totalTests + randomIncrement(),
-          totalPageViews: baseStats.totalPageViews + randomIncrement() * 5,
-          successRate: baseStats.successRate + (Math.random() - 0.5) * 2,
-          activeUsers: baseStats.activeUsers + randomIncrement(),
-        });
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-
-    // Update stats every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const simulatePageView = () => {
+    // Simulate a page view
+    window.dispatchEvent(new CustomEvent("$pageview"));
+  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + "M";
+      return `${(num / 1000000).toFixed(1)}M`;
     }
     if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
+      return `${(num / 1000).toFixed(1)}K`;
     }
     return num.toLocaleString();
   };
@@ -86,15 +57,56 @@ export default function StatsDisplay() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hidden">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
           <TrendingUp className="h-5 w-5 mr-2 text-blue-600" />
           Live Statistics
         </h3>
-        <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-xs text-gray-500">Live</span>
+        <div className="flex items-center space-x-3">
+          {error && (
+            <div className="flex items-center space-x-1 text-red-500">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-xs">Error loading</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={simulateTest}
+            className="flex items-center space-x-1 text-blue-500 hover:text-blue-700 transition-colors"
+            title="Simulate SMTP test"
+          >
+            <Mail className="h-4 w-4" />
+            <span className="text-xs">Demo Test</span>
+          </button>
+          <button
+            type="button"
+            onClick={simulatePageView}
+            className="flex items-center space-x-1 text-green-500 hover:text-green-700 transition-colors"
+            title="Simulate page view"
+          >
+            <TrendingUp className="h-4 w-4" />
+            <span className="text-xs">Demo View</span>
+          </button>
+          <button
+            type="button"
+            onClick={refetch}
+            className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors"
+            title="Refresh statistics"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="text-xs">Refresh</span>
+          </button>
+          <div className="flex items-center space-x-1">
+            <div
+              className={`w-2 h-2 rounded-full ${
+                error ? "bg-red-500" : "bg-green-500 animate-pulse"
+              }`}
+            ></div>
+            <span className="text-xs text-gray-500">
+              {error ? "Offline" : "Live"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -141,9 +153,22 @@ export default function StatsDisplay() {
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-xs text-gray-500 text-center">
-          Statistics updated in real-time • Powered by PostHog Analytics
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-500">
+            {error ? "Demo Mode" : "Live Mode"} • Powered by PostHog Analytics
+          </p>
+          {!error && (
+            <div className="flex items-center space-x-1">
+              <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-green-600">Real-time</span>
+            </div>
+          )}
+        </div>
+        {error && (
+          <p className="text-xs text-gray-400 mt-1">
+            Showing simulated data. Configure PostHog for real analytics.
+          </p>
+        )}
       </div>
     </div>
   );

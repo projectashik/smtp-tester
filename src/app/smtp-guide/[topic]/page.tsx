@@ -8,6 +8,7 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import GuidePageTracker from "@/components/GuidePageTracker";
 
 // Define guide topics
 const guides = {
@@ -168,7 +169,8 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const guide = guides[params.topic as GuideKey];
+  const resolvedParams = await params;
+  const guide = guides[resolvedParams.topic as GuideKey];
 
   if (!guide) {
     return {
@@ -213,111 +215,117 @@ export async function generateMetadata({
   };
 }
 
-export default function GuidePage({ params }: PageProps) {
-  const guide = guides[params.topic as GuideKey];
+export default async function GuidePage({ params }: PageProps) {
+  const resolvedParams = await params;
+  const guide = guides[resolvedParams.topic as GuideKey];
 
   if (!guide) {
     notFound();
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
-                <BookOpen className="h-6 w-6 text-white" />
+    <>
+      <GuidePageTracker guide={resolvedParams.topic} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                  <BookOpen className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    SMTP Guide
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    Professional Email Server Documentation
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">SMTP Guide</h1>
-                <p className="text-sm text-gray-600">
-                  Professional Email Server Documentation
-                </p>
-              </div>
+              <Link
+                href="/"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="hidden sm:inline text-sm">Back to Tester</span>
+              </Link>
             </div>
-            <Link
-              href="/"
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="hidden sm:inline text-sm">Back to Tester</span>
-            </Link>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {guide.title}
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            {guide.description}
-          </p>
-        </div>
-
-        {/* Content */}
-        <article className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          {/* Introduction */}
-          <div className="p-8 border-b border-gray-200">
-            <p className="text-lg text-gray-700 leading-relaxed">
-              {guide.content.introduction}
+        {/* Main Content */}
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Hero Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              {guide.title}
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+              {guide.description}
             </p>
           </div>
 
-          {/* Sections */}
-          <div className="p-8 space-y-8">
-            {guide.content.sections.map((section, index) => (
-              <div key={index}>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                  {section.title}
-                </h2>
-                <p className="text-gray-700 leading-relaxed">
-                  {section.content}
-                </p>
-              </div>
-            ))}
-          </div>
+          {/* Content */}
+          <article className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            {/* Introduction */}
+            <div className="p-8 border-b border-gray-200">
+              <p className="text-lg text-gray-700 leading-relaxed">
+                {guide.content.introduction}
+              </p>
+            </div>
 
-          {/* Tips */}
-          <div className="p-8 bg-blue-50 border-t border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-              <AlertTriangle className="h-6 w-6 mr-2 text-blue-600" />
-              Pro Tips
-            </h2>
-            <ul className="space-y-3">
-              {guide.content.tips.map((tip, index) => (
-                <li key={index} className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700">{tip}</span>
-                </li>
+            {/* Sections */}
+            <div className="p-8 space-y-8">
+              {guide.content.sections.map((section, index) => (
+                <div key={index}>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    {section.title}
+                  </h2>
+                  <p className="text-gray-700 leading-relaxed">
+                    {section.content}
+                  </p>
+                </div>
               ))}
-            </ul>
-          </div>
-        </article>
+            </div>
 
-        {/* CTA Section */}
-        <div className="mt-12 text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
-          <h2 className="text-2xl font-bold mb-4">
-            Ready to Test Your SMTP Configuration?
-          </h2>
-          <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-            Apply what you've learned with our professional SMTP testing tool.
-            Get real-time diagnostics and troubleshoot email issues instantly.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200 text-lg"
-          >
-            <Mail className="h-6 w-6" />
-            <span>Test SMTP Now</span>
-          </Link>
-        </div>
-      </main>
-    </div>
+            {/* Tips */}
+            <div className="p-8 bg-blue-50 border-t border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <AlertTriangle className="h-6 w-6 mr-2 text-blue-600" />
+                Pro Tips
+              </h2>
+              <ul className="space-y-3">
+                {guide.content.tips.map((tip, index) => (
+                  <li key={index} className="flex items-start space-x-3">
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-700">{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </article>
+
+          {/* CTA Section */}
+          <div className="mt-12 text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
+            <h2 className="text-2xl font-bold mb-4">
+              Ready to Test Your SMTP Configuration?
+            </h2>
+            <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
+              Apply what you've learned with our professional SMTP testing tool.
+              Get real-time diagnostics and troubleshoot email issues instantly.
+            </p>
+            <Link
+              href="/"
+              className="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200 text-lg"
+            >
+              <Mail className="h-6 w-6" />
+              <span>Test SMTP Now</span>
+            </Link>
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

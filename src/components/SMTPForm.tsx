@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useAnalytics } from "@/hooks/usePostHog";
 import { useRealtimeSMTPTest } from "@/hooks/useRealtimeSMTPTest";
 import {
   type LogEntry,
@@ -44,6 +45,7 @@ export default function SMTPForm({
   onStatusChange,
   onLogsUpdate,
 }: SMTPFormProps) {
+  const analytics = useAnalytics();
   const {
     isLoading,
     logs,
@@ -53,50 +55,6 @@ export default function SMTPForm({
     stopTest,
     clearLogs,
   } = useRealtimeSMTPTest();
-
-  const [formState, setFormState] = useState<FormState>({
-    isSubmitting: false,
-    currentStatus: TestStatus.IDLE,
-  });
-  const [selectedProvider, setSelectedProvider] =
-    useState<SMTPProvider>("CUSTOM");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // Update parent components when real-time data changes
-  useEffect(() => {
-    onStatusChange(currentStatus);
-    setFormState((prev) => ({
-      ...prev,
-      currentStatus,
-      isSubmitting: isLoading,
-    }));
-  }, [currentStatus, isLoading, onStatusChange]);
-
-  useEffect(() => {
-    if (testResult) {
-      // Dispatch analytics event for test completion
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("smtp-test-completed", {
-            detail: {
-              provider: selectedProvider,
-              success: testResult.success,
-              duration: testResult.totalDuration,
-              timestamp: new Date().toISOString(),
-            },
-          })
-        );
-      }
-
-      onTestResult(testResult);
-      setFormState((prev) => ({ ...prev, lastResult: testResult }));
-    }
-  }, [testResult, onTestResult, selectedProvider]);
-
-  useEffect(() => {
-    onLogsUpdate(logs);
-  }, [logs, onLogsUpdate]);
 
   const {
     register,
@@ -126,8 +84,70 @@ export default function SMTPForm({
     },
   });
 
+  const [formState, setFormState] = useState<FormState>({
+    isSubmitting: false,
+    currentStatus: TestStatus.IDLE,
+  });
+  const [selectedProvider, setSelectedProvider] =
+    useState<SMTPProvider>("CUSTOM");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Update parent components when real-time data changes
+  useEffect(() => {
+    onStatusChange(currentStatus);
+    setFormState((prev) => ({
+      ...prev,
+      currentStatus,
+      isSubmitting: isLoading,
+    }));
+  }, [currentStatus, isLoading, onStatusChange]);
+
+  useEffect(() => {
+    if (testResult) {
+      // Track SMTP test completion with detailed analytics
+      analytics.trackSMTPTestCompleted({
+        provider: selectedProvider,
+        success: testResult.success,
+        duration: testResult.totalDuration,
+        status: testResult.status,
+        errorType: testResult.error?.code || testResult.error?.message,
+        host: testResult.config?.host,
+        port: testResult.config?.port,
+      });
+
+      // Track errors separately for better analysis
+      if (!testResult.success && testResult.error) {
+        analytics.trackSMTPTestError({
+          provider: selectedProvider,
+          errorType: testResult.error.code || "unknown",
+          errorMessage: testResult.error.message || "Unknown error",
+          step: testResult.error.command || "unknown",
+          duration: testResult.totalDuration,
+        });
+      } else if (testResult.success) {
+        // Dispatch success event for real-time stats
+        window.dispatchEvent(new CustomEvent("smtp-test-success"));
+      }
+
+      // Dispatch completion event for real-time stats
+      window.dispatchEvent(new CustomEvent("smtp-test-completed"));
+
+      onTestResult(testResult);
+      setFormState((prev) => ({ ...prev, lastResult: testResult }));
+    }
+  }, [testResult, onTestResult, selectedProvider, analytics]);
+
+  useEffect(() => {
+    onLogsUpdate(logs);
+  }, [logs, onLogsUpdate]);
+
   const handleProviderChange = (provider: SMTPProvider) => {
     setSelectedProvider(provider);
+
+    // Track provider selection
+    analytics.trackProviderSelected(provider);
+
     const providerConfig = SMTPProviders[provider];
 
     setValue("host", providerConfig.host);
@@ -137,17 +157,14 @@ export default function SMTPForm({
   };
 
   const onSubmit = async (data: SMTPConfig) => {
-    // Dispatch analytics event for test start
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("smtp-test-started", {
-          detail: {
-            provider: selectedProvider,
-            timestamp: new Date().toISOString(),
-          },
-        })
-      );
-    }
+    // Track SMTP test start with detailed analytics
+    analytics.trackSMTPTestStarted({
+      provider: selectedProvider,
+      host: data.host,
+      port: data.port,
+      security: data.security,
+      requireAuth: data.requireAuth,
+    });
 
     // Clear previous logs and start the real-time test
     clearLogs();
