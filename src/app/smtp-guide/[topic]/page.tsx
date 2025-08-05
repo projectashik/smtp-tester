@@ -155,9 +155,9 @@ const guides = {
 type GuideKey = keyof typeof guides;
 
 interface PageProps {
-  params: {
+  params: Promise<{
     topic: string;
-  };
+  }>;
 }
 
 export async function generateStaticParams() {
@@ -278,8 +278,8 @@ export default async function GuidePage({ params }: PageProps) {
 
             {/* Sections */}
             <div className="p-8 space-y-8">
-              {guide.content.sections.map((section, index) => (
-                <div key={index}>
+              {guide.content.sections.map((section) => (
+                <div key={section.title}>
                   <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                     {section.title}
                   </h2>
@@ -297,8 +297,8 @@ export default async function GuidePage({ params }: PageProps) {
                 Pro Tips
               </h2>
               <ul className="space-y-3">
-                {guide.content.tips.map((tip, index) => (
-                  <li key={index} className="flex items-start space-x-3">
+                {guide.content.tips.map((tip) => (
+                  <li key={tip} className="flex items-start space-x-3">
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{tip}</span>
                   </li>

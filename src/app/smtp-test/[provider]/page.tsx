@@ -118,9 +118,9 @@ const providers = {
 type ProviderKey = keyof typeof providers;
 
 interface PageProps {
-  params: {
+  params: Promise<{
     provider: string;
-  };
+  }>;
 }
 
 export async function generateStaticParams() {
@@ -292,7 +292,10 @@ export default async function ProviderTestPage({ params }: PageProps) {
               </h2>
               <ul className="space-y-2">
                 {provider.features.map((feature, index) => (
-                  <li key={index} className="flex items-start space-x-2">
+                  <li
+                    key={`${index}-${feature}`}
+                    className="flex items-start space-x-2"
+                  >
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
                   </li>
@@ -309,7 +312,10 @@ export default async function ProviderTestPage({ params }: PageProps) {
             </h2>
             <ul className="space-y-3">
               {provider.commonIssues.map((issue, index) => (
-                <li key={index} className="flex items-start space-x-3">
+                <li
+                  key={`${index}-${issue}`}
+                  className="flex items-start space-x-3"
+                >
                   <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-yellow-600 text-sm font-medium">
                       {index + 1}

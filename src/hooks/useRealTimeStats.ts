@@ -1,7 +1,7 @@
 "use client";
 
 import { usePostHog } from "posthog-js/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Stats {
   totalTests: number;
@@ -22,7 +22,7 @@ export function useRealTimeStats() {
 
   const posthog = usePostHog();
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setError(null);
 
@@ -30,7 +30,7 @@ export function useRealTimeStats() {
       const response = await fetch("/api/analytics/stats");
 
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as Stats;
 
         // If we have PostHog client, try to get some real local data
         if (posthog) {
@@ -91,7 +91,7 @@ export function useRealTimeStats() {
       setStats(fallbackStats);
       setLoading(false);
     }
-  };
+  }, [posthog]);
 
   useEffect(() => {
     fetchStats();
@@ -100,7 +100,7 @@ export function useRealTimeStats() {
     const interval = setInterval(fetchStats, 30000);
 
     return () => clearInterval(interval);
-  }, [posthog]);
+  }, [fetchStats]);
 
   // Listen for PostHog events to update stats in real-time
   useEffect(() => {
